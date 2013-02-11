@@ -1,0 +1,40 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=4430
+
+Vimogen is perhaps the easiest way to install, remove, or update Vim plugins.
+
+Requiring zero-configuration, vimogen is essentially a Pathogen bundle manager that manages the installing/deleting/updating of all your Vim plugins. It also makes it easy to keep all of your Vim plugins synchronized across different machines.
+
+Simply create a manifest file in your home directory called .vimogen_repos (or let vimogen generate one for you) and put git URLs to Vim plugins in it, one line at a time, like:
+
+    git://github.com/tpope/vim-surround.git
+    git://github.com/tpope/vim-rails.git
+    git://github.com/scrooloose/nerdtree.git
+    git://github.com/godlygeek/tabular.git
+    ...
+
+(Fortunately, all of the plug-ins on vim.org are mirrored on github here: https://github.com/vim-scripts/. And there are even more plug-ins on github.)
+
+Running vimogen will give you the option to install, update, or uninstall the Vim plugins you use.
+
+    1) Install
+    2) Uninstall
+    3) Update
+    4) Exit
+    Enter the number of the menu option to perform: 1
+
+If you choose INSTALL, then it will a git clone on all the git repositories that you specified in ~/.vimogen_repos into your Pathogen dir (~/.vim/bundle). It will skip any directories that already exist. You can also append new plugin repos to the .vimogen_repos file later and install them incrementally by re- running Vimogen\\&#039s install command.
+
+If you choose UNINSTALL, it will give you a list of all your plugins to choose from:
+
+    1) EXIT
+    2) dbext
+    3) nerdtree
+    4) python-mode
+    5) vim-fugitive
+    6) vim-surround
+    7) ZenCoding
+    Enter the number of the plugin you wish to uninstall:
+
+If you choose UPDATE, then it will run a git pull on all of your bundles. This is great because you can stay up-to-date with all the new features the plugin authors create just by re-running this command often.
+
+For full instructions and the latest version of Vimogen, see: https://github.com/rkulla/vimogen
