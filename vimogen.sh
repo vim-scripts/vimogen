@@ -1,14 +1,17 @@
 #!/bin/bash
 # vimogen.sh by Ryan Kulla <rkulla@gmail.com>
-# version 1.3
+# version 1.4
 # License: Vim License. See :help license
 
 install_dir="$HOME/.vim/bundle"
 manifest_file="$HOME/.vimogen_repos"
+bold=$(tput bold)
+normal=$(tput sgr0)
+arg1="$1"
 
 usage() {
     printf "Usage:\n"
-    printf "vimogen\n\n" 
+    printf "vimogen [-v]\n\n" 
     exit
 }
 
@@ -29,18 +32,23 @@ generate_manifest() {
 
 validate_environment() {
     if [[ ! -d "$install_dir" ]]; then
-        printf "$install_dir doesn't exist. Please create it first.\n"
+        printf "%s doesn't exist. Please create it first.\n" "$install_dir"
         exit 0
     fi
 
     if [[ ! -f "$manifest_file" ]]; then
-        printf "$manifest_file doesn't exist. Generating...\n"
+        printf "%s doesn't exist. Trying to generate from any existing bundles...\n" "$manifest_file"
         generate_manifest
+    fi
+    
+    if [[ ! -f "$manifest_file" ]]; then
+        printf "[failed].\nPlease create $manifest_file.\n"
+        exit 0
     fi
 }
 
 install() {
-    printf "Installing...\n"
+    printf "${bold}Installing plugins into $install_dir/...${normal}\n"
     pushd . > /dev/null
     local install_count=0
 
@@ -48,12 +56,12 @@ install() {
 
     while read -r line; do
         local basename=${line##*/}
-        local clone_dir="${basename%.*}"
-        if [[ "$line" = *.vim* ]]; then
-            clone_dir="${clone_dir%.*}"
+        local clone_dir="${basename%.*}" # take out the .git
+        if [[ "$clone_dir" = *.vim ]]; then
+            clone_dir="${clone_dir%.vim}" # take out the .vim
         fi
         if [[ ! -d "$install_dir/$clone_dir" ]]; then
-            git clone "$line" "$clone_dir"
+            git clone -q "$line" "$clone_dir"
             install_count=$(( install_count+1 ))
         fi
     done < "$manifest_file"
@@ -71,24 +79,18 @@ install() {
 
 uninstall() {
     pushd . > /dev/null
-    local install_count=0
     local plugins=()
+    cd "$install_dir"
 
-    while read -r line; do
-        local basename=${line##*/}
-        local clone_dir="${basename%.*}"
-        if [[ "$line" = *.vim* ]]; then
-            clone_dir="${clone_dir%.*}"
-        fi
+    for clone_dir in $(ls); do 
         if [[ -d "$install_dir/$clone_dir" ]]; then
             plugins+=( "$clone_dir" )
-            install_count=$(( install_count+1 ))
         fi
-    done < "$manifest_file"
+    done
 
     local sorted_plugins=($(printf '%s\n' "${plugins[@]}"|sort -f))
 
-    PS3="Enter the number of the plugin you wish to uninstall: "
+    PS3="${bold}Enter the number of the plugin you wish to uninstall:${normal} "
     select option in "EXIT" "${sorted_plugins[@]}"
     do
         case "$option" in
@@ -115,18 +117,35 @@ uninstall() {
         esac
     done
 
+    popd > /dev/null
+
     exit 0
 }
 
 update() {
-    printf "Updating...\n"
+    printf "${bold}Updating...${normal}\n"
     pushd . > /dev/null
-
     cd "$install_dir"
+
     for i in $(ls); do 
         pushd . > /dev/null
         cd "$i" 
-        git pull --verbose
+        if [[ $arg1 = "-v" ]]; then
+            local pull=$(git pull --verbose)
+        else
+            local pull=$(git pull --verbose 2>&1 | awk 'NR==1;END{print}')
+        fi
+        printf "%s\n" "$pull"
+
+        if [[ $pull = *vimogen* && $pull != *"Already up-to-date"* ]]; then
+            printf "${bold}Vimogen was updated! You should cp the updated script to your PATH${normal}\n"
+        fi
+
+        if [[ $pull = *pathogen* && $pull != *"Already up-to-date"* ]]; then
+            printf "${bold}Pathogen was updated! You should cp ~/.vim/bundle/vim-pathogen/bundle/pathogen.vim to ~/.vim/autoload/${normal}\n"
+        fi
+
+        echo -e
         popd > /dev/null
     done
 
@@ -136,20 +155,20 @@ update() {
 }
 
 get_menu_opt() {
-    PS3="Enter the number of the menu option to perform: "
-    select option in Install Uninstall Update Exit
+    PS3="${bold}Enter the number of the menu option to perform:${normal} "
+    select option in INSTALL UNINSTALL UPDATE EXIT
     do
         case "$option" in
-            Install) 
+            INSTALL) 
                 install
                 ;;
-            Uninstall) 
+            UNINSTALL) 
                 uninstall
                 ;;
-            Update) 
+            UPDATE) 
                 update
                 ;;
-            Exit) 
+            EXIT) 
                 exit 0
                 ;;
             *) 
@@ -159,7 +178,7 @@ get_menu_opt() {
     done
 }
 
-if (( $# > 0 )); then
+if (( $# > 1 )); then
     usage
 else
     validate_environment
