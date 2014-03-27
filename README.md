@@ -95,7 +95,7 @@ running Vimogen's install command.
 
 *    If you choose UNINSTALL, it will give you a list of all your plugins to choose from:
 
-         1) EXIT                  8) tabular             15) vimogen
+         1) CANCEL                8) tabular             15) vimogen
          2) ctrlp                 9) taglist             16) vim-pathogen
          3) molokai              10) tComment            17) vim-rails
          4) nerdtree             11) tlib_vim            18) vim-repeat
@@ -104,12 +104,17 @@ running Vimogen's install command.
          7) snipmate-snippets    14) vim-jade            21) ZenCoding
          Enter the number of the plugin you wish to uninstall:
 
+Press 1 to cancel. 2 to remove all your plugins at once.
     
 *    If you choose UPDATE, then it will run a _git pull_ on all of your bundles. 
 This is great because you can stay up-to-date with all the new features the 
 plugin authors create just by re-running this command often.
 
-Tip: Keep a reference to the vimogen repository in .vimogen_repos and it will show you
+TIP: If you ever want to temporarily disable a plugin, just use vimogen to UNINSTALL it, 
+then whenever you want it back just run vimogen's INSTALL command, which will restore it
+as long as you don't delete it from .vimogen_repos.
+
+TIP: Keep a reference to the vimogen repository in .vimogen_repos and it will show you
 if a new version was updated whenever you run the update command. Then all you have to do is
 copy the updated vimogen.sh file to your PATH to have the latest version. Do the same for
 vim-pathogen's repo.

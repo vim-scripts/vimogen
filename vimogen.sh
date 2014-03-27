@@ -1,6 +1,6 @@
 #!/bin/bash
 # vimogen.sh by Ryan Kulla <rkulla@gmail.com>
-# version 1.4
+# version 1.4.1
 # License: Vim License. See :help license
 
 install_dir="$HOME/.vim/bundle"
@@ -8,11 +8,16 @@ manifest_file="$HOME/.vimogen_repos"
 bold=$(tput bold)
 normal=$(tput sgr0)
 arg1="$1"
+MSG=''
 
 usage() {
     printf "Usage:\n"
     printf "vimogen [-v]\n\n" 
     exit
+}
+
+pause() {
+   read -n 1 -p "Press any key to continue"
 }
 
 generate_manifest() {
@@ -39,6 +44,7 @@ validate_environment() {
     if [[ ! -f "$manifest_file" ]]; then
         printf "%s doesn't exist. Trying to generate from any existing bundles...\n" "$manifest_file"
         generate_manifest
+        pause
     fi
     
     if [[ ! -f "$manifest_file" ]]; then
@@ -48,7 +54,7 @@ validate_environment() {
 }
 
 install() {
-    printf "${bold}Installing plugins into $install_dir/...${normal}\n"
+    printf "${bold}Installing plugins into $install_dir/${normal}\n"
     pushd . > /dev/null
     local install_count=0
 
@@ -61,8 +67,9 @@ install() {
             clone_dir="${clone_dir%.vim}" # take out the .vim
         fi
         if [[ ! -d "$install_dir/$clone_dir" ]]; then
-            git clone -q "$line" "$clone_dir"
+            local gitclone=$(git clone "$line" "$clone_dir" 2>&1 | awk 'NR==2;END{print}')
             install_count=$(( install_count+1 ))
+            printf "%s\n" "$gitclone"
         fi
     done < "$manifest_file"
 
@@ -73,57 +80,68 @@ install() {
     else
         printf "Installed $install_count plugins\n"
     fi
-    
-    exit 0
+
+    pause
 }
 
 uninstall() {
     pushd . > /dev/null
-    local plugins=()
     cd "$install_dir"
 
-    for clone_dir in $(ls); do 
-        if [[ -d "$install_dir/$clone_dir" ]]; then
-            plugins+=( "$clone_dir" )
-        fi
-    done
-
-    local sorted_plugins=($(printf '%s\n' "${plugins[@]}"|sort -f))
-
-    PS3="${bold}Enter the number of the plugin you wish to uninstall:${normal} "
-    select option in "EXIT" "${sorted_plugins[@]}"
+    PS3="Enter the number of the plugin you wish to uninstall: "
+    while :
     do
-        case "$option" in
-            EXIT) 
-                if [[ "$option" -eq "EXIT" ]]; then
-                    printf "exiting\n"
-                    exit 0
-                fi
-                ;;
-            *)
-                if [[ ! -z "$option" ]]; then
-                    local path_to_rm="$install_dir/$option"
-                    read -n 1 -p "rm $path_to_rm: y/n? " prompt_rm
+        local plugins=()
+        for clone_dir in $(ls); do 
+            if [[ -d "$install_dir/$clone_dir" ]]; then
+                plugins+=( "$clone_dir" )
+            fi
+        done
+        local sorted_plugins=($(printf '%s\n' "${plugins[@]}"|sort -f))
+        clear
+        printf "\n${bold}%s${normal}\n" "$MSG"
+        select option in "CANCEL" "ALL" "${sorted_plugins[@]}"
+        do
+            MSG=''
+            case "$option" in
+                CANCEL) 
+                    if [[ "$option" -eq "CANCEL" ]]; then
+                        return 0
+                    fi
+                    break
+                    ;;
+                ALL)
+                    read -n 1 -p "Delete all files from $install_dir/*: y/n? " prompt_rm
                     if [[ "$prompt_rm" = 'y' ]]; then
-                        printf "\nUninstalling [$option]\n"
-                        rm -rf "$path_to_rm"
+                        printf "\nUninstalling all plugins...\n"
+                        rm -rf "$install_dir/"*
+                        printf "Done\n"
+                        pause
                     fi
                     echo
-                    uninstall
-                else
-                    printf "Invalid selection\n"
-                fi
-                ;;
-        esac
+                    break
+                    ;;
+                *)
+                    if [[ ! -z "$option" ]]; then
+                        local path_to_rm="$install_dir/$option"
+                        printf "Uninstalling $option"
+                        MSG="Uninstalled $option"
+                        rm -rf "$path_to_rm"
+                        echo
+                    else
+                        MSG="Invalid selection"
+                    fi
+                    break
+                    ;;
+            esac
+        done
     done
 
     popd > /dev/null
-
-    exit 0
 }
 
 update() {
-    printf "${bold}Updating...${normal}\n"
+    printf "Updating...\n"
     pushd . > /dev/null
     cd "$install_dir"
 
@@ -138,11 +156,11 @@ update() {
         printf "%s\n" "$pull"
 
         if [[ $pull = *vimogen* && $pull != *"Already up-to-date"* ]]; then
-            printf "${bold}Vimogen was updated! You should cp the updated script to your PATH${normal}\n"
+            MSG+="\nVimogen was updated! You should copy the new script to your PATH"
         fi
 
         if [[ $pull = *pathogen* && $pull != *"Already up-to-date"* ]]; then
-            printf "${bold}Pathogen was updated! You should cp ~/.vim/bundle/vim-pathogen/bundle/pathogen.vim to ~/.vim/autoload/${normal}\n"
+            MSG+="\nPathogen was updated. You should copy the new ~/.vim/bundle/vim-pathogen/bundle/pathogen.vim to ~/.vim/autoload/"
         fi
 
         echo -e
@@ -150,31 +168,41 @@ update() {
     done
 
     popd > /dev/null
-
-    exit 0
+    pause
 }
 
 get_menu_opt() {
-    PS3="${bold}Enter the number of the menu option to perform:${normal} "
-    select option in INSTALL UNINSTALL UPDATE EXIT
+    while :
+    clear
+    PS3="Enter the number of the menu option to perform: "
+    printf "\n${bold}%s${normal}\n" "$MSG"
     do
-        case "$option" in
-            INSTALL) 
-                install
-                ;;
-            UNINSTALL) 
-                uninstall
-                ;;
-            UPDATE) 
-                update
-                ;;
-            EXIT) 
-                exit 0
-                ;;
-            *) 
-                echo  "Invalid selection"
-                ;;
-        esac
+        select option in INSTALL UNINSTALL UPDATE EXIT
+        do
+            MSG=''
+            case "$option" in
+                INSTALL) 
+                    install
+                    break
+                    ;;
+                UNINSTALL) 
+                    uninstall
+                    break
+                    ;;
+                UPDATE) 
+                    update
+                    break
+                    ;;
+                EXIT) 
+                    exit 0
+                    break
+                    ;;
+                *) 
+                    MSG="Invalid selection"
+                    break
+                    ;;
+            esac
+        done
     done
 }
 
